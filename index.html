@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0a0e27" />
+<title>凪</title>
+
+<!-- PWA / iOS ホーム画面追加対応 -->
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="凪" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<!-- フォント -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
+
+<style>
+  /* ============ Reset / Base ============ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  :root {
+    --bg-deep: #0a0e27;
+    --bg-mid: #101d3f;
+    --bg-low: #0d1b2a;
+
+    --text-main: #c8d6e5;
+    --text-bright: #f0f4f8;
+    --text-sub: #6b7fa3;
+
+    --accent-deep: #2a4a7f;
+    --accent-shadow: #1a3a6a;
+
+    --moon: #d4e0ed;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at 50% 15%, rgba(212, 224, 237, 0.04) 0%, transparent 55%),
+      linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 55%, var(--bg-low) 100%);
+    color: var(--text-main);
+    font-family: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.05em;
+    position: relative;
+    /* Safe area inset 対応 */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    z-index: 2;
+  }
+
+  /* ============ 背景：星 ============ */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: var(--moon);
+    box-shadow: 0 0 4px rgba(212, 224, 237, 0.6);
+    opacity: 0.3;
+    animation: twinkle var(--dur, 5s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  .star.lg { width: 3px; height: 3px; box-shadow: 0 0 6px rgba(212, 224, 237, 0.7); }
+  .star.sm { width: 1px; height: 1px; }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; transform: scale(0.9); }
+    50% { opacity: 0.85; transform: scale(1.1); }
+  }
+
+  /* ============ 背景：波 ============ */
+  .waves {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 38vh;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
+    will-change: transform;
+  }
+  .wave svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .wave.layer1 {
+    opacity: 0.45;
+    animation: wave-flow 14s linear infinite;
+  }
+  .wave.layer2 {
+    opacity: 0.35;
+    animation: wave-flow 10s linear infinite reverse;
+    bottom: -5%;
+  }
+  .wave.layer3 {
+    opacity: 0.6;
+    animation: wave-flow 8s linear infinite;
+    bottom: -10%;
+  }
+  @keyframes wave-flow {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ============ 共通画面構造 ============ */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5vh 6vw;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ============ 開始画面 ============ */
+  #screen-start .title {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 500;
+    font-size: clamp(3.5rem, 14vw, 5.5rem);
+    color: var(--text-bright);
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 30px rgba(212, 224, 237, 0.2);
+  }
+  #screen-start .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    letter-spacing: 0.4em;
+    text-indent: 0.4em;
+    margin-bottom: 4rem;
+    font-weight: 400;
+  }
+
+  .settings {
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 4rem;
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 0;
+    border-bottom: 1px solid rgba(107, 127, 163, 0.2);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label {
+    font-size: 0.95rem;
+    color: var(--text-main);
+    letter-spacing: 0.15em;
+  }
+  .setting-control {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .setting-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(200, 214, 229, 0.3);
+    background: transparent;
+    color: var(--text-main);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .setting-btn:hover, .setting-btn:active {
+    background: rgba(212, 224, 237, 0.08);
+    border-color: rgba(200, 214, 229, 0.6);
+  }
+  .setting-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+  .setting-value {
+    font-family: 'Cormorant Garamond', 'Shippori Mincho', serif;
+    font-size: 1.6rem;
+    color: var(--text-bright);
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 300;
+  }
+  .setting-value .unit {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    margin-left: 0.2rem;
+    letter-spacing: 0.1em;
+  }
+
+  .primary-btn {
+    background: transparent;
+    color: var(--text-bright);
+    border: 1px solid rgba(200, 214, 229, 0.4);
+    padding: 1.1rem 4.5rem;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.5em;
+    text-indent: 0.5em;
+    font-weight: 400;
+    cursor: pointer;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.5s ease;
+  }
+  .primary-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(212, 224, 237, 0.12) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .primary-btn:hover::before, .primary-btn:active::before {
+    opacity: 1;
+  }
+  .primary-btn:hover, .primary-btn:active {
+    border-color: rgba(212, 224, 237, 0.7);
+    text-shadow: 0 0 12px rgba(212, 224, 237, 0.4);
+  }
+
+  /* ============ エクササイズ画面 ============ */
+  #screen-exercise {
+    justify-content: space-between;
+    padding: 8vh 6vw;
+  }
+  .set-counter {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+    color: var(--text-sub);
+    letter-spacing: 0.4em;
+    text-indent: 0.4em;
+    font-weight: 300;
+  }
+  .set-counter .current {
+    color: var(--text-main);
+    font-size: 1.05rem;
+  }
+
+  .breath-area {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  /* 呼吸インジケーター（月） */
+
+.breath-orb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    background: rgba(42, 74, 127, 0.55);
+    box-shadow:
+      0 0 50px rgba(42, 74, 127, 0.4),
+      0 0 100px rgba(42, 74, 127, 0.2);
+    opacity: 0.85;
+    transition: transform 5s ease-in-out, opacity 5s ease-in-out;
+    will-change: transform, opacity;
+  }
+
+  .breath-orb::before,
+  .breath-orb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(212, 224, 237, 0.25);
+    animation: ripple 4s ease-out infinite;
+  }
+  .breath-orb::after {
+    animation-delay: 2s;
+  }
+  .breath-orb.holding {
+    animation: hold-pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes hold-pulse {
+    0%, 100% { filter: brightness(1); }
+    50%      { filter: brightness(1.15); }
+  }
+
+  @keyframes ripple {
+    0%   { transform: scale(1);   opacity: 0.6; }
+    100% { transform: scale(1.5); opacity: 0;   }
+  }
+
+  /* メッセージ */
+  .message {
+    position: relative;
+    z-index: 2;
+    font-size: clamp(1.15rem, 4.8vw, 1.5rem);
+    color: var(--text-bright);
+    text-align: center;
+    line-height: 2;
+    letter-spacing: 0.12em;
+    max-width: 25em;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    text-shadow: 0 0 20px rgba(10, 14, 39, 0.6);
+    padding: 0 0.5em;
+  }
+  .message.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* カウントダウン */
+  .countdown {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.2rem;
+    color: var(--text-sub);
+    letter-spacing: 0.1em;
+    font-weight: 300;
+    opacity: 0.7;
+    min-height: 2.6rem;
+  }
+
+  /* 中断ボタン */
+  .stop-btn {
+    background: transparent;
+    color: var(--text-sub);
+    border: none;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.5em;
+    text-indent: 0.5em;
+    cursor: pointer;
+    padding: 0.8rem 1.5rem;
+    transition: color 0.3s ease;
+    opacity: 0.5;
+  }
+  .stop-btn:hover, .stop-btn:active {
+    color: var(--text-main);
+    opacity: 1;
+  }
+
+  /* ============ 終了画面 ============ */
+  #screen-end .end-message {
+    font-size: clamp(1.1rem, 4.5vw, 1.4rem);
+    color: var(--text-bright);
+    text-align: center;
+    line-height: 2.2;
+    letter-spacing: 0.15em;
+    margin-bottom: 4rem;
+    max-width: 22em;
+  }
+
+  /* ============ ユーティリティ ============ */
+  .breath-orb.fade-out {
+    opacity: 0 !important;
+    transform: translate(-50%, -50%) scale(0.4) !important;
+    transition: all 1.2s ease !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景：星 -->
+<div class="stars" id="stars"></div>
+
+<!-- 背景：波 -->
+<div class="waves">
+  <div class="wave layer1">
+    <svg viewBox="0 0 2400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,100 C200,140 400,60 600,100 C800,140 1000,60 1200,100 C1400,140 1600,60 1800,100 C2000,140 2200,60 2400,100 L2400,200 L0,200 Z"
+        fill="#1a3a6a" />
+    </svg>
+  </div>
+  <div class="wave layer2">
+    <svg viewBox="0 0 2400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,120 C300,80 500,160 800,120 C1100,80 1300,160 1600,120 C1900,80 2100,160 2400,120 L2400,200 L0,200 Z"
+        fill="#2a4a7f" />
+    </svg>
+  </div>
+  <div class="wave layer3">
+    <svg viewBox="0 0 2400 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,150 C250,120 450,180 700,150 C950,120 1150,180 1400,150 C1650,120 1850,180 2100,150 C2250,135 2350,165 2400,150 L2400,200 L0,200 Z"
+        fill="#0d1b2a" />
+    </svg>
+  </div>
+</div>
+
+<!-- アプリ本体 -->
+<main id="app">
+
+  <!-- 開始画面 -->
+  <section class="screen active" id="screen-start">
+    <h1 class="title">凪</h1>
+    <p class="subtitle">なぎ</p>
+
+    <div class="settings">
+      <div class="setting-row">
+        <span class="setting-label">回　数</span>
+        <div class="setting-control">
+          <button class="setting-btn" id="sets-minus" aria-label="回数を減らす">−</button>
+          <span class="setting-value"><span id="sets-value">5</span><span class="unit">回</span></span>
+          <button class="setting-btn" id="sets-plus" aria-label="回数を増やす">＋</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">休　息</span>
+        <div class="setting-control">
+          <button class="setting-btn" id="rest-minus" aria-label="休息を減らす">−</button>
+          <span class="setting-value"><span id="rest-value">3</span><span class="unit">秒</span></span>
+          <button class="setting-btn" id="rest-plus" aria-label="休息を増やす">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary-btn" id="start-btn">始める</button>
+  </section>
+
+  <!-- エクササイズ画面 -->
+  <section class="screen" id="screen-exercise">
+    <div class="set-counter">
+      <span class="current" id="current-set">1</span>　／　<span id="total-set">5</span>
+    </div>
+
+    <div class="breath-area">
+      <div class="breath-orb" id="breath-orb"></div>
+      <p class="message" id="message"></p>
+    </div>
+
+    <div class="countdown" id="countdown"></div>
+    <button class="stop-btn" id="stop-btn">中断する</button>
+  </section>
+
+  <!-- 終了画面 -->
+  <section class="screen" id="screen-end">
+    <p class="end-message" id="end-message"></p>
+    <button class="primary-btn" id="restart-btn">もう一度</button>
+  </section>
+
+</main>
+
+<script>
+/* =====================================================
+   凪 — 肩の緊張解除ガイド
+   ===================================================== */
+
+/* ---------- 効果音 ---------- */
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    } catch (e) {
+      audioCtx = null;
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playChime(frequency) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // 基音
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = 'sine';
+  osc1.frequency.setValueAtTime(frequency, now);
+
+  // 5度上の倍音（薄く）
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(frequency * 1.5, now);
+
+  const gain1 = audioCtx.createGain();
+  gain1.gain.setValueAtTime(0.0001, now);
+  gain1.gain.linearRampToValueAtTime(0.06, now + 0.03);
+  gain1.gain.exponentialRampToValueAtTime(0.0001, now + 1.6);
+
+  const gain2 = audioCtx.createGain();
+  gain2.gain.setValueAtTime(0.0001, now);
+  gain2.gain.linearRampToValueAtTime(0.02, now + 0.03);
+  gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+  osc1.connect(gain1).connect(audioCtx.destination);
+  osc2.connect(gain2).connect(audioCtx.destination);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 1.7);
+  osc2.stop(now + 1.3);
+}
+
+
+/* ---------- メッセージ群 ---------- */
+const messages = {
+  start: [
+    '…少し、力を抜く時間にしよう',
+    '肩に溜まったものを、海に流す',
+    '波の音を思い浮かべよ。──始める',
+    '凪の時間である。──力を抜け',
+    '今日も肩が上がっているな',
+    '夜の海に、静かに沈め',
+    '深く、ゆっくり。それでよい',
+  ],
+  shrug: [
+    '息を吸いながら…肩を、耳に近づけていく',
+    'ゆっくり吸え。肩が自然と持ち上がる',
+    '吸って…肩をすくめる。力を溜めている',
+    '息を吸いながら、肩を高く',
+  ],
+  phase1: [
+    '吐きながら…少しずつ、下ろしていく',
+    '息を吐く。肩が、元の位置に戻っていく',
+    'ゆっくり吐け。肩が下がり始める',
+    '吐く息と共に、力が抜けていく',
+  ],
+  phase2: [
+    'さらに下へ。ここからが本番である',
+    '吐き続けろ。肩甲骨が下がっていく',
+    'まだ下がる。…もう少し',
+    '耳から遠ざけていく。ゆっくりと',
+    '肩を、深く沈めていく',
+  ],
+  phase3: [
+    'ここで止まれ。この位置を、覚えよ',
+    '…そこである。動くな',
+    '今の位置を、身体に刻め',
+    'この高さを、忘れるな',
+  ],
+  rest: [
+    '……よい',
+    '一つ、終わった',
+    '波が引いて、また寄せる',
+    '次の波を待て',
+    '……息を、整えよ',
+  ],
+  end: [
+    '…よくできた。今日はこれでよい',
+    '凪いだな。…肩の位置を忘れるなよ',
+    'よくやった。…少し、楽になったか',
+    '肩が、以前より低い位置にいるはずである',
+    '夜の海のように、静かであるな',
+  ],
+};
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+/* ---------- フェーズ定義 ---------- */
+const PHASES = [
+  { key: 'shrug',  duration: 5, scale: 1.25, opacity: 0.95, hold: false, countdownStart: 5,    tone: 880.00 },
+  { key: 'phase1', duration: 3, scale: 1.0,  opacity: 0.75, hold: false, countdownStart: 10,   tone: 659.25 },
+  { key: 'phase2', duration: 4, scale: 0.55, opacity: 0.4,  hold: false, countdownStart: null, tone: 587.33 },
+  { key: 'phase3', duration: 3, scale: 0.55, opacity: 0.45, hold: true,  countdownStart: null, tone: 493.88 },
+];
+
+/* ---------- 状態 ---------- */
+const state = {
+  totalSets: 5,
+  restSec: 3,
+  currentSet: 0,
+  running: false,
+  timers: [],
+  rafTick: null,
+};
+
+/* ---------- DOM ---------- */
+const $ = (id) => document.getElementById(id);
+const screens = {
+  start: $('screen-start'),
+  exercise: $('screen-exercise'),
+  end: $('screen-end'),
+};
+const orb = $('breath-orb');
+const messageEl = $('message');
+const countdownEl = $('countdown');
+const currentSetEl = $('current-set');
+const totalSetEl = $('total-set');
+const setsValueEl = $('sets-value');
+const restValueEl = $('rest-value');
+const endMessageEl = $('end-message');
+
+/* ---------- 星の生成 ---------- */
+function generateStars() {
+  const container = $('stars');
+  const count = 28;
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    if (Math.random() < 0.2) star.classList.add('lg');
+    else if (Math.random() < 0.4) star.classList.add('sm');
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.top = `${Math.random() * 65}%`;
+    star.style.setProperty('--dur', `${3 + Math.random() * 5}s`);
+    star.style.setProperty('--delay', `${Math.random() * 5}s`);
+    container.appendChild(star);
+  }
+}
+generateStars();
+
+/* ---------- 設定UI ---------- */
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+function bindStepper(minusId, plusId, get, set, min, max) {
+  $(minusId).addEventListener('click', () => set(clamp(get() - 1, min, max)));
+  $(plusId).addEventListener('click',  () => set(clamp(get() + 1, min, max)));
+}
+
+bindStepper('sets-minus', 'sets-plus',
+  () => state.totalSets,
+  (v) => { state.totalSets = v; setsValueEl.textContent = v; },
+  1, 10);
+
+bindStepper('rest-minus', 'rest-plus',
+  () => state.restSec,
+  (v) => { state.restSec = v; restValueEl.textContent = v; },
+  0, 10);
+
+/* ---------- 画面遷移 ---------- */
+function showScreen(name) {
+  Object.values(screens).forEach((s) => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+
+/* ---------- メッセージ表示 ---------- */
+function setMessage(text) {
+  messageEl.classList.remove('show');
+  setTimeout(() => {
+    messageEl.textContent = text;
+    requestAnimationFrame(() => {
+      messageEl.classList.add('show');
+    });
+  }, 350);
+}
+
+function clearMessage() {
+  messageEl.classList.remove('show');
+  messageEl.textContent = '';
+}
+
+/* ---------- カウントダウン ---------- */
+function startCountdown(seconds) {
+  if (state.rafTick) cancelAnimationFrame(state.rafTick);
+  const start = performance.now();
+  const total = seconds * 1000;
+  const tick = (now) => {
+    const elapsed = now - start;
+    const remaining = Math.max(0, Math.ceil((total - elapsed) / 1000));
+    countdownEl.textContent = remaining > 0 ? remaining : '';
+    if (elapsed < total && state.running) {
+      state.rafTick = requestAnimationFrame(tick);
+    }
+  };
+  state.rafTick = requestAnimationFrame(tick);
+}
+
+function stopCountdown() {
+  if (state.rafTick) {
+    cancelAnimationFrame(state.rafTick);
+    state.rafTick = null;
+  }
+  countdownEl.textContent = '';
+}
+
+/* ---------- 呼吸インジケーター ---------- */
+function setBreathState(scale, opacity, durationSec, holding) {
+  orb.style.transition = `transform ${durationSec}s ease-in-out, opacity ${durationSec}s ease-in-out`;
+  // transform に scale を反映（中央配置の translate を維持）
+  orb.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  orb.style.opacity = opacity;
+  orb.classList.toggle('holding', !!holding);
+  orb.classList.remove('fade-out');
+}
+
+function resetBreath() {
+  orb.style.transition = 'transform 1.2s ease, opacity 1.2s ease';
+  orb.style.transform = 'translate(-50%, -50%) scale(0.7)';
+  orb.style.opacity = '0.55';
+  orb.classList.remove('holding');
+}
+
+/* ---------- 進行制御 ---------- */
+function clearTimers() {
+  state.timers.forEach((t) => clearTimeout(t));
+  state.timers = [];
+  stopCountdown();
+}
+
+function schedule(fn, delay) {
+  const t = setTimeout(() => {
+    state.timers = state.timers.filter((x) => x !== t);
+    fn();
+  }, delay);
+  state.timers.push(t);
+}
+
+function runSet(setIndex) {
+  if (!state.running) return;
+  state.currentSet = setIndex;
+  currentSetEl.textContent = String(setIndex);
+
+  let cumulative = 0;
+
+// 各フェーズを順に実行
+  PHASES.forEach((phase, i) => {
+    schedule(() => {
+      if (!state.running) return;
+      playChime(phase.tone);
+      setMessage(pick(messages[phase.key]));
+      setBreathState(phase.scale, phase.opacity, phase.duration, phase.hold);
+      if (phase.countdownStart !== null) {
+        startCountdown(phase.countdownStart);
+      }
+    }, cumulative);
+    cumulative += phase.duration * 1000;
+  });
+
+  // セット完了時：休息か終了か
+  schedule(() => {
+    if (!state.running) return;
+    if (setIndex < state.totalSets) {
+      runRest(setIndex + 1);
+    } else {
+      finish();
+    }
+  }, cumulative);
+}
+
+function runRest(nextSetIndex) {
+  if (!state.running) return;
+
+  if (state.restSec === 0) {
+    runSet(nextSetIndex);
+    return;
+  }
+
+  setMessage(pick(messages.rest));
+  resetBreath();
+  startCountdown(state.restSec);
+
+  schedule(() => {
+    runSet(nextSetIndex);
+  }, state.restSec * 1000);
+}
+
+function start() {
+  state.running = true;
+  totalSetEl.textContent = String(state.totalSets);
+  showScreen('exercise');
+  clearMessage();
+
+  // 開始メッセージで導入（2秒）
+  setBreathState(0.7, 0.55, 4, false);
+  setTimeout(() => setMessage(pick(messages.start)), 100);
+
+  schedule(() => {
+    if (!state.running) return;
+    runSet(1);
+  }, 4400);
+}
+
+function finish() {
+  state.running = false;
+  clearTimers();
+  orb.classList.add('fade-out');
+  endMessageEl.textContent = pick(messages.end);
+  setTimeout(() => {
+    showScreen('end');
+  }, 1000);
+}
+
+function abort() {
+  state.running = false;
+  clearTimers();
+  resetBreath();
+  clearMessage();
+  showScreen('start');
+}
+
+/* ---------- イベント ---------- */
+$('start-btn').addEventListener('click', () => {
+  ensureAudio();
+  start();
+});
+$('stop-btn').addEventListener('click', abort);
+$('restart-btn').addEventListener('click', () => {
+  resetBreath();
+  showScreen('start');
+});
+
+/* ---------- ページ離脱時の停止 ---------- */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && state.running) {
+    abort();
+  }
+});
+
+/* ---------- Service Worker 登録 ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {/* 黙殺 */});
+  });
+}
+</script>
+</body>
+</html>
