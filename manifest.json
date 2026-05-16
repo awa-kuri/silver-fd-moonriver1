@@ -1,5 +1,5 @@
 {
-  "name": "凪 — 肩を解す",
+  "name": "凪 — 肩甲骨リセット",
   "short_name": "凪",
   "description": "肩の緊張を解除する呼吸ガイド。夜の海の静けさの中で、肩のデフォルト位置を再教育する。",
   "lang": "ja",
@@ -23,11 +23,5 @@
       "type": "image/png",
       "purpose": "any"
     },
-    {
-      "src": "icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
   ]
 }
